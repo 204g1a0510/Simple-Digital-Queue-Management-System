@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Queue Management System</title>
+</head>
+<body>
+    <h1>Queue Management System</h1>
+    <form id="addCustomerForm">
+        <input type="text" id="name" placeholder="Name" required>
+        <input type="text" id="ticket_number" placeholder="Ticket Number" required>
+        <button type="submit">Add Customer</button>
+    </form>
+    <h2>Current Queue</h2>
+    <ul id="queue"></ul>
+    <button id="serveNextBtn" style="display: none;">Serve Next Customer</button>
+
+    <script>
+        async function fetchQueue() {
+            const response = await fetch('/queue');
+            const queue = await response.json();
+            queue.sort((a, b) => parseInt(a.ticket_number) - parseInt(b.ticket_number)); // Sort the queue based on ticket numbers
+            const queueList = document.getElementById('queue');
+            queueList.innerHTML = '';
+            queue.forEach(customer => {
+                const li = document.createElement('li');
+                li.textContent = `${customer.ticket_number} - ${customer.name} - ${customer.status}`;
+                queueList.appendChild(li);
+            });
+        }
+
+        async function serveNextCustomer() {
+            const adminToken = prompt("Enter admin token:");
+            if (adminToken !== 'admin123') {
+                alert("Invalid admin token. You are not authorized to serve customers.");
+                return;
+            }
+
+            const response = await fetch('/remove/next?admin_token=admin123', { method: 'DELETE' });
+            const result = await response.json();
+            if (result.removed_customer) {
+                alert(`Served Customer: ${result.removed_customer}`);
+            } else {
+                alert('No customers in the queue to serve.');
+            }
+            fetchQueue();
+        }
+
+        async function addCustomer(event) {
+            event.preventDefault();
+            const name = document.getElementById('name').value;
+            const ticket_number = document.getElementById('ticket_number').value;
+            await fetch('/add', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ name, ticket_number }),
+            });
+            document.getElementById('name').value = '';
+            document.getElementById('ticket_number').value = '';
+            fetchQueue();
+        }
+
+        document.addEventListener('DOMContentLoaded', async () => {
+            fetchQueue();
+
+            // Check if the user is an admin (hardcoded admin token for demonstration)
+            const adminToken = prompt("Enter admin token:");
+            if (adminToken === 'admin123') {
+                document.getElementById('serveNextBtn').style.display = 'block';
+            }
+
+            document.getElementById('addCustomerForm').addEventListener('submit', addCustomer);
+            document.getElementById('serveNextBtn').addEventListener('click', serveNextCustomer);
+        });
+    </script>
+</body>
+</html>
