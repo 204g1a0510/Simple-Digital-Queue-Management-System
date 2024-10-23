@@ -16,11 +16,16 @@ class QueueManagementSystem:
     def __init__(self):
         self.customers = []
         self.served_customers = []
-
     def add_customer(self, name, ticket_number):
+    # Check if the ticket number already exists in the queue
+        for customer in self.customers:
+            if customer.ticket_number == ticket_number:
+                print(f"Customer with ticket number {ticket_number} already exists in the queue.")
+                return False  # Return False if ticket number is a duplicate
         customer = Customer(name, ticket_number)
         self.customers.append(customer)
         print(f"Customer {name} with ticket number {ticket_number} added to the queue.")
+        return True  # Return True if the customer is successfully added
 
     def serve_next_customer(self):
         if self.customers:
@@ -99,15 +104,26 @@ class MyRequestHandler(http.server.SimpleHTTPRequestHandler):
             post_data = json.loads(self.rfile.read(content_length))
             name = post_data['name']
             ticket_number = post_data['ticket_number']
-            qms.add_customer(name, ticket_number)
-            self.send_response(200)
-            self.send_header('Content-type', 'application/json')
-            self.end_headers()
-            self.wfile.write(json.dumps({'status': 'success'}).encode())
+
+            # Try to add the customer and capture the result (True/False)
+            if qms.add_customer(name, ticket_number):
+                # Customer successfully added
+                self.send_response(200)
+                self.send_header('Content-type', 'application/json')
+                self.end_headers()
+                self.wfile.write(json.dumps({'status': 'success', 'message': 'Customer added to the queue'}).encode())
+            else:
+                # Duplicate ticket number detected
+                self.send_response(400)  # Bad request response
+                self.send_header('Content-type', 'application/json')
+                self.end_headers()
+                self.wfile.write(json.dumps({'status': 'error', 'message': 'Duplicate ticket number'}).encode())
         else:
             self.send_response(404)
             self.end_headers()
             self.wfile.write(b'Not Found')
+
+
 
 Handler = MyRequestHandler
 
